@@ -1,4 +1,4 @@
-<project name="techdesigndoc" default="create" basedir="../">
+<project name="techdesigndoc" default="create" basedir="../../">
   <description>
     Ant build file to create a technical design document
   </description>
@@ -233,7 +233,21 @@
           </fileset>
       </replaceregexp>
 
-      <!-- convert classAccesses to h2 -->
+      <!-- convert classAccesses to rows -->
+      <replaceregexp match="&lt;classAccesses&gt;" replace="&lt;tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/classAccesses&gt;" replace="&lt;/tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      
+      <!-- convert classAccesses child elements to td's -->
       <replaceregexp match="&lt;(apexClass|enabled)&gt;" replace="&lt;td&gt;" flags="gms">
         <fileset dir="sfPermDocs/">
             <include name="**/*.permissionset"/>
@@ -443,7 +457,7 @@
       <!-- place file name into top of doc -->
       <exec executable="cmd">
         <arg value="/c"/>
-        <arg value="sfPermDocs/sfPermDocs.bat"/>
+        <arg value="build\sfPermDocs\sfPermDocs.bat"/>
       </exec>
 
     
