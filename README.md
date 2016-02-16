@@ -11,5 +11,5 @@ Ant tasks to build HTML document that describes the Profiles, Permission Sets, Q
 - Update sfPermDocs.properties to list the permission sets/ profiles for which you'd like to run the report. For all profiles/ permission sets, enter *
 - Run the following from the Windows command prompt
 ````
-ant -buildfile build\sfPermDocs.xml -propertyfile build\sfPermDocs.properties create 
+ant -buildfile build\sfPermDocs\sfPermDocs.xml -propertyfile build\sfPermDocs\sfPermDocs.properties create 
 ````
