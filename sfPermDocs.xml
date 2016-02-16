@@ -1,0 +1,480 @@
+<project name="techdesigndoc" default="create" basedir="../">
+  <description>
+    Ant build file to create a technical design document
+  </description>
+  <!-- set global properties for this build -->
+  <property name="src" location="src"/>
+  <property name="build" location="build"/>
+  <property name="dist" location="dist"/>
+  <property name="pkg" value=""/>
+
+  <target name="create" depends="consolidate" description="kicks off the process to build sfPermDocs.html">
+  </target>
+
+  <target name="init">
+    <echo level="info">Getting Started</echo>
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <!-- Create the build directory structure used by compile -->
+    <mkdir dir="${build}"/>
+    <echo level="info">Kicking off build process for files beginning with --&gt; ${prefix}</echo>
+
+  </target>
+
+  <target name="scrape" depends="init" description="retrieves the desired files">
+    <echo level="info">Cleaning up old files</echo>
+    <delete dir="sfPermDocs" />
+
+    <echo level="info">Initiating file scrape</echo>
+    <echo level="info">Profiles</echo>
+    <mkdir dir="sfPermDocs/profiles" />
+    <copy todir="sfPermDocs/profiles">
+      <fileset dir="src/profiles" includes="**/*.profile">
+        <filename regex="${prefix}.*.profile" casesensitive="false" />
+      </fileset>
+    </copy>
+
+    <echo level="info">Permissions</echo>
+    <mkdir dir="sfPermDocs/permissionsets" />
+    <copy todir="sfPermDocs/permissionsets">
+      <fileset dir="src/permissionsets" includes="**/*.permissionset">
+        <filename regex="${prefix}.*.permissionset" casesensitive="false" />
+      </fileset>
+    </copy>
+  </target>
+
+
+  <!-- <target name="test" depends="scrape" >
+    <replaceregexp match="(&lt;/applicationVisibilities&gt;\n\s*&lt;classAccesses&gt;|&lt;/classAccesses&gt;\n\s*&lt;description&gt;)" replace="@@@@" flags="gms">
+          <fileset dir="sfPermDocs/permissionsets">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+  </target> -->
+
+
+  <target name="convertFilesToHTML" depends="scrape" description="takes the files that were moved and converts XML tags to HTML which can be rendered in a browser">
+
+    <!-- Quick run down of the pattern established here
+      - Replace transitions between XML elements with closing table tags and transition to next table.
+      - Remove repetitive tags to create new rows (tr)
+      - Remove element contents and replace with table cell tag (td)
+    -->
+    
+      <!-- 
+        
+        Transitions 
+        
+      -->
+      <!-- Page Headers Permission Sets -->
+      <replaceregexp match="^&lt;\?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;\?&gt;\n&lt;PermissionSet xmlns=&quot;http://soap.sforce.com/2006/04/metadata&quot;&gt;\n\s*&lt;applicationVisibilities&gt;" replace="&lt;h2&gt;Application Visibilities&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Application Name&lt;/th&gt; &lt;th&gt;Visible&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+          <fileset dir="sfPermDocs/permissionsets">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- Page Header Profiles -->
+      <replaceregexp match="^&lt;\?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;\?&gt;\n&lt;Profile xmlns=&quot;http://soap.sforce.com/2006/04/metadata&quot;&gt;\n\s*&lt;applicationVisibilities&gt;" replace="&lt;h2&gt;Application Visibilities&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Application Name&lt;/th&gt; &lt;th&gt;Visible&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/profiles">
+          <include name="**/*.profile"/>
+        </fileset>
+      </replaceregexp>  
+
+      <!-- applicationVisibilities/classAccesses transition -->
+      <replaceregexp match="&lt;/applicationVisibilities&gt;\n\s*&lt;classAccesses&gt;" replace="&lt;/tr&gt; &lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Class Accesses&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Apex Class&lt;/th&gt; &lt;th&gt;Enabled&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt; &lt;tr&gt; " flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+
+      <!-- classAccesses/description (perm set specific) transition -->
+      <replaceregexp match="&lt;/classAccesses&gt;\n\s*&lt;description&gt;" replace="&lt;/tr&gt; &lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Description&lt;/h2&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- classAccesses/custom (profile specific) transition -->
+      <replaceregexp match="&lt;/classAccesses&gt;\n\s*&lt;custom&gt;" replace="&lt;/tr&gt; &lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Custom Profile&lt;/h2&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- description/fieldPermissions transition -->
+      <replaceregexp match="&lt;/(description|custom)&gt;\n\s*&lt;fieldPermissions&gt;" replace="&lt;h2&gt;Field Permissions&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Editable&lt;/th&gt; &lt;th&gt;Field&lt;/th&gt; &lt;th&gt;Readable&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- fieldPermissions/label transition (perm set specific)
+        label is a single tag, no new table needed -->
+      <replaceregexp match="&lt;/fieldPermissions&gt;\n\s*&lt;label&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Label&lt;/h2&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- fieldPermissions/layoutAssignments transition
+        label is a single tag, no new table needed -->
+      <replaceregexp match="&lt;/fieldPermissions&gt;\n\s*&lt;layoutAssigments&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Layout Assignments&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Editable&lt;/th&gt; &lt;th&gt;Layout&lt;/th&gt;  &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- label/objectPermissions transition (perm set specific)-->
+      <replaceregexp match="&lt;/label&gt;\n\s*&lt;objectPermissions&gt;" replace="&lt;h2&gt;Object Permissions&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Allow Create&lt;/th&gt; &lt;th&gt;allowDelete&lt;/th&gt; &lt;th&gt;Allow Edit&lt;/th&gt; &lt;th&gt;Allow Read&lt;/th&gt; &lt;th&gt;Modify All Records&lt;/th&gt; &lt;th&gt;Object&lt;/th&gt; &lt;th&gt;viewAllRecords&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- layoutAssignments/objectPermissions transition (profile specific) -->
+      <replaceregexp match="&lt;/layoutAssignments&gt;\n\s*&lt;objectPermissions&gt;" replace="&lt;/tbody&gt;&lt;/table&gt; &lt;h2&gt;Object Permissions&lt;/h2&gt; &lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Allow Create&lt;/th&gt; &lt;th&gt;allowDelete&lt;/th&gt; &lt;th&gt;Allow Edit&lt;/th&gt; &lt;th&gt;Allow Read&lt;/th&gt; &lt;th&gt;Modify All Records&lt;/th&gt; &lt;th&gt;Object&lt;/th&gt; &lt;th&gt;viewAllRecords&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- objectPermissions/recordTypeVisibilities (perm set specific) transition -->
+      <replaceregexp match="&lt;/objectPermissions&gt;\n\s*&lt;recordTypeVisibilities&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Record Type Visibilities&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Record Type&lt;/th&gt; &lt;th&gt;Visible&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- objectPermissions/recordTypeVisibilities (profile specific) transition 
+        - profiles can have a default recordType set, hence the profile specific section
+      -->
+      <replaceregexp match="&lt;/objectPermissions&gt;\n\s*&lt;recordTypeVisibilities&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Record Type Visibilities&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Default&lt;/th&gt; &lt;th&gt;Record Type&lt;/th&gt; &lt;th&gt;Visible&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- recordTypeVisibilities/tabSettings (perm set specific) transition -->
+      <replaceregexp match="&lt;/recordTypeVisibilities&gt;\n\s*&lt;tabSettings&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Tab Settings&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Tab&lt;/th&gt; &lt;th&gt;Visibility&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- recordTypeVisibilities/tabSettings (profile specific) transition -->
+      <replaceregexp match="&lt;/recordTypeVisibilities&gt;\n\s*&lt;tabVisibilities&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;Tab Settings&lt;/h2&gt;&lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Tab&lt;/th&gt; &lt;th&gt;Visibility&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- tabSettings|tabVisibilities/userLicense  transition 
+        User License has only one tag -->
+      <replaceregexp match="&lt;/(tabSettings|tabVisibilities)&gt;\n\s*&lt;userLicense&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;&lt;h2&gt;User License&lt;/h2&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- userLicense/userPermissions (profile specific) transition -->
+      <replaceregexp match="&lt;/userLicense&gt;\n\s*&lt;userPermissions&gt;" replace="&lt;h2&gt;User Permissions&lt;/h2&gt; &lt;table class=&quot;table table-striped&quot;&gt;  &lt;thead&gt; &lt;tr&gt; &lt;th&gt;Enabled&lt;/th&gt; &lt;th&gt;Name&lt;/th&gt; &lt;/tr&gt; &lt;/thead&gt; &lt;tbody&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- userLicense/PermissionSet (perm set only) - Close out the page -->
+      <replaceregexp match="&lt;/userLicense&gt;\n\s*&lt;/PermissionSet&gt;" replace="" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- userPermissions/Profile (profile only) - Close out the page -->
+      <replaceregexp match="&lt;/userPermissions&gt;\n\s*&lt;/Profile&gt;" replace="&lt;/tbody&gt;&lt;/table&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!--
+        body content 
+        
+      -->
+      <replaceregexp match="&lt;applicationVisibilities&gt;" replace="&lt;tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;(application|default|visible)&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/(application|default|visible)&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      
+      <replaceregexp match="&lt;/applicationVisibilities&gt;" replace="&lt;/tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- convert classAccesses to h2 -->
+      <replaceregexp match="&lt;(apexClass|enabled)&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/(apexClass|enabled)&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- Description (specific only to permission set -->
+      <!-- convert description tag to h2 -->
+      <replaceregexp match="&lt;description&gt;" replace="&lt;h2&gt;Description" flags="gms">
+        <fileset dir="sfPermDocs/permissionsets">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/description&gt;" replace="&lt;/h2&gt;&lt;/description&gt;" flags="gms">
+        <fileset dir="sfPermDocs/permissionsets">
+            <include name="**/*.permissionset"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- Object Permissions tr creation -->
+      <replaceregexp match="&lt;objectPermissions&gt;" replace="&lt;tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/objectPermissions&gt;" replace="&lt;/tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+      <!-- Layout Assignments (specific only to profiles) -->
+      <!-- Add Layout Assignments h2 -->
+      <replaceregexp match="&lt;layoutAssignments&gt;" replace="&lt;tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/layoutAssignments&gt;" replace="&lt;/tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      
+      <!-- create td's for layout assignments -->
+      <replaceregexp match="&lt;layout&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/layout&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      
+
+      <!-- Object Permissions -->
+      <!-- replace contents of table -->
+      <replaceregexp match="&lt;(allowCreate|allowDelete|allowEdit|allowRead|modifyAllRecords|object|viewAllRecords)&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/(allowCreate|allowDelete|allowEdit|allowRead|modifyAllRecords|object|viewAllRecords)&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      
+      
+      <!-- fieldPermission new rows -->
+      <replaceregexp match="&lt;fieldPermissions&gt;" replace="&lt;tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/fieldPermissions&gt;" replace="&lt;/tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <!-- field contents to td's -->
+      <replaceregexp match="&lt;(editable|field|readable)&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>            
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/(editable|field|readable)&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+          <include name="**/*.permissionset"/>
+          <include name="**/*.profile"/>            
+        </fileset>
+      </replaceregexp>
+      
+
+      <!-- Record Type Visibility -->
+      <replaceregexp match="&lt;recordTypeVisibilities&gt;" replace="&lt;tr&gt;" flags="gms">
+          <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/recordTypeVisibilities&gt;" replace="&lt;/tr&gt;" flags="gms">
+          <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <!-- Record Type Visibilities contents to td's -->
+      <replaceregexp match="&lt;(default|recordType|visible)&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>            
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/(|recordType|visible)&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+          <include name="**/*.permissionset"/>
+          <include name="**/*.profile"/>            
+        </fileset>
+      </replaceregexp>
+
+      <!-- Tab Visibilities rows -->
+      <replaceregexp match="&lt;(tabSettings|tabVisibilities)&gt;" replace="&lt;tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/(tabSettings|tabVisibilities)&gt;" replace="&lt;/tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <!-- field contents to td's -->
+      <replaceregexp match="&lt;(tab|visibility)&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/(tab|visibility)&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      
+     <!-- User Permissions rows -->
+      <replaceregexp match="&lt;userPermissions&gt;" replace="&lt;tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/userPermissions&gt;" replace="&lt;/tr&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <!-- userPermissions - name element. Enabled already taken care of -->
+      <replaceregexp match="&lt;name&gt;" replace="&lt;td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;/name&gt;" replace="&lt;/td&gt;" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+    
+      <!-- cleanup misc tags -->
+      <replaceregexp match="&lt;label&gt;.*&lt;/label&gt;" replace="" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+      <replaceregexp match="&lt;userLicense&gt;.*&lt;/userLicense&gt;" replace="" flags="gms">
+        <fileset dir="sfPermDocs/">
+            <include name="**/*.permissionset"/>
+            <include name="**/*.profile"/>
+          </fileset>
+      </replaceregexp>
+
+
+
+      <!-- place file name into top of doc -->
+      <exec executable="cmd">
+        <arg value="/c"/>
+        <arg value="sfPermDocs/sfPermDocs.bat"/>
+      </exec>
+
+    
+  </target>
+
+  <target name="consolidate" depends="convertFilesToHTML" description="takes the files that were moved and converts XML tags to HTML which can be rendered in a browser">
+    <touch file="sfPermDocs/sfPermDocs.html" />
+    <!-- build the file so it looks presentable -->
+    <echo file="sfPermDocs/sfPermDocs.html" append="true">&lt;html&gt; &lt;head&gt;</echo>
+    <!-- bootsrap the file so it looks fancy -->
+    <echo file="sfPermDocs/sfPermDocs.html" append="true">&lt;link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous"&gt;&lt;link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous"&gt;&lt;script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"&gt;&lt;/script&gt;</echo>
+    <!-- closeout the header and create page body -->
+    <echo file="sfPermDocs/sfPermDocs.html" append="true">&lt;/head&gt; &lt;body&gt; &lt;div class=&quot;container&quot;&gt;</echo>
+    <echo file="sfPermDocs/sfPermDocs.html" append="true">&lt;h1&gt;Permission Sets&lt;/h1&gt;</echo>
+
+
+    <!-- consolidate all permission sets -->
+    <concat destfile="sfPermDocs/sfPermDocs.html" append="true">
+      <fileset dir="sfPermDocs/">
+        <include name="permissionsets/*.permissionset" />
+      </fileset>
+    </concat>
+
+    <!-- consolidate all permission sets -->
+    <concat destfile="sfPermDocs/sfPermDocs.html" append="true">
+      <fileset dir="sfPermDocs/">
+            <include name="profiles/*.profile" />
+      </fileset>
+    </concat>
+
+    <echo file="sfPermDocs/sfPermDocs.html" append="true">&lt;/div&gt;&lt;/body&gt; &lt;/html&gt;</echo>
+  </target>
+
+</project>
